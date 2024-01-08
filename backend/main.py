@@ -19,7 +19,7 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.post("/send_game_state")
+@app.post("/get_game_state")
 async def get_game_state(game_state: GameState):
     print(f'game state: {game_state}')
     return {"message": "get game state"}

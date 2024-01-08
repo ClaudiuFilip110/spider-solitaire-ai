@@ -9,7 +9,7 @@ export const sendGameState = (allCards, time, totalClick, complete) => {
     console.log('current score is', score)
     // TODO: add correct calculation for score
 
-    const backendEndpoint = 'http://localhost:8000/send_game_state';
+    const backendEndpoint = 'http://localhost:8000/get_game_state';
 
     const gameState = {
         "allCards": allCards,
