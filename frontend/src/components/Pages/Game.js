@@ -22,6 +22,7 @@ import CardHolder from '../CardHolder/CardHolder'
 import { Redirect } from 'react-router-dom'
 import shuffleAudio from '../../assets/sound/shuffle.mp3'
 import flickAudio from '../../assets/sound/flick.mp3'
+import {sendGameState} from "../../logic/AI";
 
 const Game = () => {
 
@@ -158,6 +159,7 @@ const Game = () => {
             setHighlighted({})
             CompleteControl()
             setUndoDistribute(false)
+            sendGameState(allCards, time, totalClick, complete)
         }
     }
 

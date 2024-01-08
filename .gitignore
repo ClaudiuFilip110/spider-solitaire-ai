@@ -21,3 +21,6 @@ yarn-error.log*
 
 .venv
 .idea
+.cache
+
+frontend/node_modules/
