@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import '../../assets/css/card.css'
 import CardGenerator from '../../logic/CardGenerator'
 import Navbar from '../Navbar/Navbar'
@@ -42,7 +42,49 @@ const Game = () => {
     const [ undoDistribute, setUndoDistribute ] = useState(false) // undo after distribute new cards control
     const [ totalClick, setTotalClick ] = useState(0) // totalclick value for final score
     const [ time, setTime ] = useState(0) // hold time for display at final page
-    
+    const [socket,setSocket] = useState(new WebSocket('ws://localhost:6789'));
+    const [gameState, setGameState] = useState({
+                                                                                            time: time,
+                                                                                            totalClick: totalClick,
+                                                                                            completedDecks: complete,
+                                                                                            remSets: (remCards.length / 10),
+                                                                                            activeCards: activeCards(allCards),
+                                                                                        });
+
+    useEffect(() => {
+        // This effect runs when time, totalClick, complete, remCards, or allCards changes
+        setGameState({
+            time: time,
+            totalClick: totalClick,
+            completedDecks: complete,
+            remSets: (remCards.length / 10),
+            activeCards: activeCards(allCards),
+        });
+    }, [time, totalClick, complete, remCards, allCards]);
+
+    useEffect(() => {
+
+        socket.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        socket.onmessage = (event) => {
+            console.log('Message from server ', event.data);
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error: ', error);
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket disconnected');
+        };
+
+        return () => {
+            socket.close();
+        };
+    }, [gameState]);
+
     const handleTime = (time) => {
         setTime(time)
     }
@@ -76,6 +118,7 @@ const Game = () => {
                 const prevRemCards = undoDistribution(allCards) // get distributed cards
                 setRemCards([...prevRemCards, ...remCards]) // set remaining cards
                 setUndoDistribute(false)
+                sendGameState(gameState, socket);
             }
             else{
                 removeCardOldPlace(prevCards.newHead, allCards) // if last move not distribution undo last replacement
@@ -115,6 +158,7 @@ const Game = () => {
             setUndoDistribute(true)
             CompleteControl()
             setTotalClick(totalClick - 5)
+            sendGameState(gameState, socket);
         }
         else{
             alert("You must fill all columns for deal new cards")
@@ -152,6 +196,7 @@ const Game = () => {
                 setCanUndo(true)
                 new Audio(flickAudio).play()
                 setTotalClick(totalClick + 1)
+                sendGameState(gameState, socket);
             }
 
             // reset variables for new processes, check if any completed decks
@@ -159,7 +204,6 @@ const Game = () => {
             setHighlighted({})
             CompleteControl()
             setUndoDistribute(false)
-            sendGameState(allCards, time, totalClick, complete)
         }
     }
 
@@ -196,6 +240,23 @@ const Game = () => {
         }} />
  
     )
+}
+
+const activeCards = (allCards) => {
+    let activeCards = [];
+    for (let index = 0; index < 10; index++) {
+        activeCards[index] = []
+    }
+
+    for (let index = 0; index < 10; index++) {
+        let element = allCards[index]
+        while (element.next !== null) {
+            element = element.next
+            if (element.val.show === true)
+                activeCards[index].push(element.val)
+        }
+    }
+    return activeCards;
 }
 
 export default Game

@@ -1,25 +1,21 @@
-from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
+import asyncio
 
-from data.GameState import GameState
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Replace with your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+import websockets
+from websockets import ConnectionClosedOK
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+async def handler(websocket, path):
+    try:
+        while True:
+            message = await websocket.recv()
+            print(f"Received message from client: {message}")
+            response = "Action to take"
+            await websocket.send(response)
+    except ConnectionClosedOK as e:
+        print('error closing the connection')
 
 
-@app.post("/get_game_state")
-async def get_game_state(game_state: GameState):
-    print(f'game state: {game_state}')
-    return {"message": "get game state"}
+start_server = websockets.serve(handler, "localhost", 6789)
+
+asyncio.get_event_loop().run_until_complete(start_server)
+asyncio.get_event_loop().run_forever()
