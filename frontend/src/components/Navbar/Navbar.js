@@ -11,14 +11,14 @@ import rulesIcon from '../../assets/images/rules.png'
 import useWindowDimensions from '../../useWindowDimensions'
 import Rules from './Rules'
 
-const Navbar = ({clickUndo, clickHint, complete, handleTime}) => {
+const Navbar = ({clickUndo, clickHint, complete, handleTime, clickRestart}) => {
 
     const { width } = useWindowDimensions()
     const [ showRules, setShowRules ] = useState(false)
 
-    const clickEvent = () => {
-        window.location.reload()
-    }
+    // const clickEvent = () => {
+    //     window.location.reload()
+    // }
 
     const handleClick = () => {
         setShowRules(!showRules)
@@ -48,7 +48,7 @@ const Navbar = ({clickUndo, clickHint, complete, handleTime}) => {
         </div>
 
             <div className = "btn"
-                onClick={clickEvent} > 
+                onClick={clickRestart} >
                 <img src={restartIcon} alt="Restart" />
                  Restart 
             </div>

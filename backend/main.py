@@ -1,21 +1,33 @@
 import asyncio
+import warnings
 
 import websockets
-from websockets import ConnectionClosedOK
+from stable_baselines3 import PPO, DQN, A2C
+
+from env import SpiderEnv
+
+warnings.filterwarnings("ignore")
 
 
-async def handler(websocket, path):
+async def handler(websocket):
     try:
-        while True:
-            message = await websocket.recv()
-            print(f"Received message from client: {message}")
-            response = "Action to take"
-            await websocket.send(response)
-    except ConnectionClosedOK as e:
-        print('error closing the connection')
+        env = SpiderEnv(websocket)
+        model = PPO("MultiInputPolicy", env, verbose=1)
+        model = A2C("MultiInputPolicy", env, verbose=1)
+        model.learn(10000, progress_bar=True)
+        # TODO: Add training monitoring capabilities
+
+    except websockets.exceptions.ConnectionClosed as exception:
+        print(f"[SERVER-ERROR] ==> Connection closed exception {exception}")
+    # remove connection from connections array
+    finally:
+        print("[SERVER] ==> Client disconnected")
 
 
-start_server = websockets.serve(handler, "localhost", 6789)
+async def main():
+    async with websockets.serve(handler, "localhost", 6789):
+        await asyncio.Future()
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+
+if __name__ == "__main__":
+    asyncio.run(main())

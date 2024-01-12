@@ -104,7 +104,7 @@ export const checkComplete = (allCards, complete, test) => {
                         test && new Audio(applauseAudio).play()
                         complete += 1
                         removeCardOldPlace(node, allCards)
-                        test && alert("You Have Completed a Deck")
+                        // test && alert("You Have Completed a Deck")
                     }
                 } else rank = 1 // reset rank value for new deck
             }
@@ -159,12 +159,12 @@ export const secondClick = (item, highlighted, allCards, index) => {
     } else {
         // if not correct feedback to user and remove highlight
         if(item === null) {
-            alert("Only A can be placed to blank columns")
+            // alert("Only A can be placed to blank columns")
         } 
         else {
             if(item !== highlighted){
                 new Audio(wrongAudio).play()
-                alert("Incorrect Placement") 
+                // alert("Incorrect Placement")
             }
         }
     }

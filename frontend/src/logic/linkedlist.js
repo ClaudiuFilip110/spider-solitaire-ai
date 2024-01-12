@@ -1,5 +1,5 @@
 
-class Link {
+export class Link {
     constructor(val) {
         this.val = val;
         this.next = null;
