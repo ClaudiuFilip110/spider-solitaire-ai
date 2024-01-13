@@ -49,7 +49,7 @@ const Game = () => {
                         time: time,
                         totalClick: totalClick,
                         completedDecks: complete,
-                        remSets: (remCards.length / 10),
+                        remSets: (remCards.length / 10) - 1,
                         activeCards: activeCards(allCards),
                         action: "restart",
                         });
@@ -86,7 +86,7 @@ const Game = () => {
                     time: time,
                     totalClick: totalClick,
                     completedDecks: complete,
-                    remSets: (remCards.length / 10),
+                    remSets: (remCards.length / 10) - 1,
                     activeCards: activeCards(allCards),
                     action: "restart"
                 });
@@ -118,7 +118,7 @@ const Game = () => {
                 time: time,
                 totalClick: totalClick,
                 completedDecks: complete,
-                remSets: (remCards.length / 10),
+                remSets: (remCards.length / 10) - 1, // -1 because Discrete(5) goes from 0
                 activeCards: activeCards(allCards),
                 action: "clickCard"
             });
@@ -153,7 +153,7 @@ const Game = () => {
             time: time,
             totalClick: totalClick,
             completedDecks: complete,
-            remSets: (remCards.length / 10),
+            remSets: (remCards.length / 10) - 1,
             activeCards: activeCards(allCards),
             action: "clickCard"
         });
@@ -201,7 +201,7 @@ const Game = () => {
             time: time,
             totalClick: totalClick,
             completedDecks: complete,
-            remSets: (remCards.length / 10),
+            remSets: (remCards.length / 10) - 1,
             activeCards: activeCards(allCards),
             action: "undo"
         });
@@ -238,7 +238,7 @@ const Game = () => {
             time: time,
             totalClick: totalClick,
             completedDecks: complete,
-            remSets: (remCards.length / 10),
+            remSets: (remCards.length / 10) - 1,
             activeCards: activeCards(allCards),
             action: "remCards"
         });
@@ -285,7 +285,7 @@ const Game = () => {
             time: time,
             totalClick: totalClick,
             completedDecks: complete,
-            remSets: (remCards.length / 10),
+            remSets: (remCards.length / 10) - 1,
             activeCards: activeCards(allCards),
             action: "clickCard"
         });

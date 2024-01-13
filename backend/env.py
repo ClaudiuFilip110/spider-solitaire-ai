@@ -8,8 +8,8 @@ from typing import Any, SupportsFloat
 import nest_asyncio
 import numpy as np
 from gymnasium import spaces
-from gymnasium.core import RenderFrame, ObsType, ActType, Env
-from gymnasium.spaces import MultiDiscrete
+from gymnasium.core import ObsType, ActType, Env
+from gymnasium.spaces import MultiDiscrete, Box
 
 nest_asyncio.apply()
 
@@ -38,22 +38,20 @@ class SpiderEnv(Env):
         num_card_rows = 10  # Number of sublists
         num_cards = 13  # number of cards
         num_decks = 8  # number of decks
+        max_val = 5000  # max time
+        num_sets = 5  # max number of sets
         self.observation_space = spaces.Dict({
-            'time': spaces.Box(low=0, high=5000, dtype=np.float32),
-            'totalClick': spaces.Box(low=0, high=5000, shape=(1,), dtype=np.int32),
-            'completedDecks': spaces.Box(low=0, high=num_decks, shape=(1,), dtype=np.int32),
-            'remSets': spaces.Box(low=0, high=num_decks, shape=(1,), dtype=np.int32),
+            'time': spaces.Discrete(max_val),
+            'totalClick': spaces.Discrete(max_val),
+            'completedDecks': spaces.Discrete(num_decks),
+            'remSets': spaces.Discrete(num_sets),
             'activeCards': spaces.Box(low=0, high=num_cards, shape=(num_card_rows, max_elems_per_row), dtype=np.int32),
-            'activeCardLengths': spaces.Box(low=0, high=max_elems_per_row, shape=(num_card_rows,), dtype=np.int32)
+            'activeCardLengths': spaces.MultiDiscrete([max_elems_per_row] * num_card_rows),
         })
 
-        low = np.array([0, 0, 0, 0, 0])
-        high = np.array([num_cards, num_decks, max_elems_per_row, num_card_rows, num_card_rows])
         # TODO:  UserWarning: WARN: For Box action spaces, we recommend using a symmetric and normalized space (range=[-1, 1] or [0, 1]). See https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html for more information.
         # TODO: nu ai adaugat valori in action space pentru undo si remCards
-        # self.action_space = spaces.Box(low=low, high=high, shape=(5,), dtype=np.int32)
-        # TODO: pt a scapa de valori float, ChatGPT sugereaza asta: action = np.round(action).astype(np.int32)
-        self.action_space = MultiDiscrete([13, 8, 10, 13, 10])
+        self.action_space = MultiDiscrete([num_cards, num_decks, num_card_rows, num_card_rows, num_card_rows])
         """Action space represents value(1-13), deck (1-8), moveFrom (1-10), moveTo (1-10) 
         ex: [3,3,0,2,5] -> move ((card 3 identified by deck 3 (it's unique)) from row 0)) to (el 2, row 5)"""
 
@@ -93,10 +91,10 @@ class SpiderEnv(Env):
                 active_cards[i][j] = int(card['value'])
 
         new_obs = {
-            'time': np.array([float(message['time'])], dtype=np.float32),
-            'totalClick': np.array([int(message['totalClick'])], dtype=np.int32),
-            'completedDecks': np.array([int(message['completedDecks'])], dtype=np.int32),
-            'remSets': np.array([int(message['remSets'])], dtype=np.int32),
+            'time': int(message['time']),
+            'totalClick': int(message['totalClick']),
+            'completedDecks': int(message['completedDecks']),
+            'remSets': int(message['remSets']),
             'activeCards': np.array(active_cards, dtype=np.int32),
             'activeCardLengths': np.array([len(row) for row in message['activeCards']], dtype=np.int32)
         }
