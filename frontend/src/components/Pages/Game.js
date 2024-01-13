@@ -3,20 +3,18 @@ import '../../assets/css/card.css'
 import CardGenerator, {card} from '../../logic/CardGenerator'
 import Navbar from '../Navbar/Navbar'
 import {
-        clickGetCards,
-        checkComplete,
-        firstClick,
-        secondClick,
-        removeCardOldPlace,
-        undoPlacement,
-        getPrev,
-        getHint,
-        removeHighlight,
-        undoDistribution,
-        getCompleteHint,
-        anyBlank
-        }
-        from '../../logic/Gameplay'
+    clickGetCards,
+    checkComplete,
+    firstClick,
+    secondClick,
+    removeCardOldPlace,
+    undoPlacement,
+    getPrev,
+    removeHighlight,
+    undoDistribution,
+    anyBlank, getHint, getCompleteHint
+}
+    from '../../logic/Gameplay'
 import { cardsPush } from '../../logic/ComponentCreate'
 import CardHolder from '../CardHolder/CardHolder'
 import { Redirect } from 'react-router-dom'
@@ -43,39 +41,37 @@ const Game = () => {
     const [ totalClick, setTotalClick ] = useState(0) // totalclick value for final score
     const [ time, setTime ] = useState(0) // hold time for display at final page
     const [socket, setSocket] = useState(null);
-    const [actionReceived, setActionReceived] = useState(false);
     const [gameState,
         setGameState] = useState({
                         time: time,
                         totalClick: totalClick,
                         completedDecks: complete,
                         remSets: (remCards.length / 10) - 1,
-                        activeCards: activeCards(allCards),
-                        action: "restart",
+                        activeCards: activeCards(allCards)
                         });
     const [triggerSecondClick, setTriggerSecondClick] = useState({trigger: false, to: null});
+    // New state to track if data should be sent back to Python
+    const [shouldSendBack, setShouldSendBack] = useState(false);
 
     useEffect(() => {
-        if (triggerSecondClick.trigger) {
-            if (triggerSecondClick.to !== null) {
-                // Call the second click function
-                let active_cards = activeCards(allCards);
-                let lastElem = active_cards[triggerSecondClick.to].length-1;
-                let moveTo = findLink(allCards, active_cards[triggerSecondClick.to][lastElem]['deck'], `${active_cards[triggerSecondClick.to][lastElem]['value']}`);
-                const secondClick = clickCard(moveTo, triggerSecondClick.to);
-                secondClick();
-
-                // Reset the trigger
-                setTriggerSecondClick(false);}
-            else {
-                console.log('TRIGGER NULL');
-            }
+        if (shouldSendBack) {
+            sendGameState(gameState, socket);
+            setShouldSendBack(false);
         }
-    }, [triggerSecondClick]); // Only re-run if triggerSecondClick changes
+    }, [shouldSendBack, gameState, socket]);
+
+    useEffect(() => {
+        setGameState({
+            time: time,
+            totalClick: totalClick,
+            completedDecks: complete,
+            remSets: (remCards.length / 10) - 1,
+            activeCards: activeCards(allCards)
+        });
+    }, [time, totalClick, complete, remCards, allCards]); // Dependencies
 
 
     useEffect(() => {
-        // console.log(activeCards(allCards));
         // Initialize WebSocket connection
         const newSocket = new WebSocket('ws://localhost:6789');
         setSocket(newSocket);
@@ -87,41 +83,31 @@ const Game = () => {
                     totalClick: totalClick,
                     completedDecks: complete,
                     remSets: (remCards.length / 10) - 1,
-                    activeCards: activeCards(allCards),
-                    action: "restart"
+                    activeCards: activeCards(allCards)
                 });
         };
 
         newSocket.onmessage = (event) => {
+            setShouldSendBack(true);
             let data = event.data;
+            let action = null;
             try {
-                console.log('JSON FROM PYTHON: ', data);
                 let message = JSON.parse(data);
-                switch (message['action']) {
-                    case 'clickCard':
-                        fakeClickCard(clickCard, message['data'], allCards, setTriggerSecondClick);
-                        break;
-                    case 'undo':
-                        fakeClickUndo(clickUndo);
-                        break;
-                    case 'remCards':
-                        fakeClickRemCards(clickRemCards);
-                        break;
+                action = message['action'];
+                action[0] ++; action[3]++; // cards start from 0 in Python, but 1 in FE
+                let masterAction = action[0]
+                if (masterAction <= 13) {
+                    fakeClickCard(clickCard, action, allCards, setTriggerSecondClick);
+                } else if (masterAction === 14) {
+                    fakeClickUndo(clickUndo);
+                } else if (masterAction === 15) {
+                    fakeClickRemCards(clickRemCards);
+                } else {
+                    console.log("SWITCH ERROR: Something it horribly wrong!!!!!")
                 }
             }
             catch (e) {
                 console.log('Error while getting data from Python: ', e)
-            }
-            finally {
-             console.log('send data back to python:', gameState);
-                setGameState({
-                time: time,
-                totalClick: totalClick,
-                completedDecks: complete,
-                remSets: (remCards.length / 10) - 1, // -1 because Discrete(5) goes from 0
-                activeCards: activeCards(allCards),
-                action: "clickCard"
-            });
             }
         };
 
@@ -133,49 +119,57 @@ const Game = () => {
             console.log('WebSocket disconnected');
         };
 
-
         return () => {
             newSocket.close();
         };
     }, []);
 
     useEffect(() => {
-        sendGameState(gameState, socket);
-    }, [gameState, socket]);
-
+        if (triggerSecondClick.trigger) {
+            if (triggerSecondClick.to !== null) {
+                // Call the second click function
+                let active_cards = activeCards(allCards);
+                let lastElem = active_cards[triggerSecondClick.to].length-1;
+                let moveTo = findLink(allCards, active_cards[triggerSecondClick.to][lastElem]['deck'], `${active_cards[triggerSecondClick.to][lastElem]['value']}`);
+                if (moveTo !== null) {
+                    const secondClick = clickCard(moveTo, triggerSecondClick.to);
+                    secondClick();
+                    setTriggerSecondClick({ trigger: false, to: triggerSecondClick.to });
+                }
+                else {
+                    console.log('moveTo is null')
+                }
+            }
+            else {
+                console.log('TRIGGER NULL');
+            }
+        }
+    }, [triggerSecondClick]);
 
     const handleTime = (time) => {
         setTime(time)
     }
 
     const clickHint = async () => {
-        setGameState({
-            time: time,
-            totalClick: totalClick,
-            completedDecks: complete,
-            remSets: (remCards.length / 10) - 1,
-            activeCards: activeCards(allCards),
-            action: "clickCard"
-        });
         // Checking whether there is a selected card
-        // if (active) {
-        //     // if yes, control all cards, if any eligible card do replacement
-        //     if (getHint(allCards, highlighted)) {
-        //         setTotalClick(totalClick + 3)
-        //         setCanUndo(true)
-        //         setUndoDistribute(false)
-        //         CompleteControl()
-        //     } else{
-        //         // if not eligible card remove highlight
-        //         console.log("No Hint Found For This Card")
-        //         removeHighlight(highlighted)
-        //     }
-        //     setActive(false)
-        // } else{
-        //     // if there is no selected card search all cards for any hint
-        //     let check = await getCompleteHint(allCards)
-        //     check ? setTotalClick(totalClick + 5) : console.log("No Hint Found")
-        // }
+        if (active) {
+            // if yes, control all cards, if any eligible card do replacement
+            if (getHint(allCards, highlighted)) {
+                setTotalClick(totalClick + 3);
+                setCanUndo(true)
+                setUndoDistribute(false)
+                CompleteControl()
+            } else{
+                // if not eligible card remove highlight
+                console.log("No Hint Found For This Card")
+                removeHighlight(highlighted)
+            }
+            setActive(false)
+        } else{
+            // if there is no selected card search all cards for any hint
+            let check = await getCompleteHint(allCards)
+            check ? setTotalClick(totalClick + 5) : console.log("No Hint Found")
+        }
     }
 
     const clickUndo = () => {
@@ -189,62 +183,49 @@ const Game = () => {
                 removeCardOldPlace(prevCards.newHead, allCards) // if last move not distribution undo last replacement
                 undoPlacement(allCards, prevCards) // do undo
                 setPrevCards(null)
-                setTotalClick(totalClick + 2)
             }
             setCanUndo(false)
         } else{
-            console.log("Please Click Rules for Undo Rules")
+            // console.log("Please Click Rules for Undo Rules")
             active && removeHighlight(highlighted)
             setActive(false)
         }
-        setGameState({
-            time: time,
-            totalClick: totalClick,
-            completedDecks: complete,
-            remSets: (remCards.length / 10) - 1,
-            activeCards: activeCards(allCards),
-            action: "undo"
-        });
+        setTotalClick(totalClick+1);
     }
 
     const clickRemCards = () => {
-        if (anyBlank(allCards)) {
-            // new Audio(shuffleAudio).play()
-            // set new remaining cards, request is holding remaining card click count
-            const {
-                request: newRequest,
-                remCards: newRemCards
-            } = clickGetCards(request, allCards, remCards)
+        if (remCards > 0) {
+            if (anyBlank(allCards)) {
+                // new Audio(shuffleAudio).play()
+                // set new remaining cards, request is holding remaining card click count
+                const {
+                    request: newRequest,
+                    remCards: newRemCards
+                } = clickGetCards(request, allCards, remCards)
 
-            // if any selected card remove highlight
-            if (active) {
-                setHighlighted({})
-                removeHighlight(highlighted)
-                setActive(false)
+                // if any selected card remove highlight
+                if (active) {
+                    setHighlighted({})
+                    removeHighlight(highlighted)
+                    setActive(false)
+                }
+
+                // set new variables
+                setRequest(newRequest)
+                setRemCards(newRemCards)
+                setCanUndo(true)
+                setUndoDistribute(true)
+                CompleteControl()
+                setTotalClick(totalClick - 5);
             }
-
-            // set new variables
-            setRequest(newRequest)
-            setRemCards(newRemCards)
-            setCanUndo(true)
-            setUndoDistribute(true)
-            CompleteControl()
-            setTotalClick(totalClick - 5)
+            else{
+                console.log("You must fill all columns for deal new cards")
+            }
         }
-        else{
-            console.log("You must fill all columns for deal new cards")
-        }
-        setGameState({
-            time: time,
-            totalClick: totalClick,
-            completedDecks: complete,
-            remSets: (remCards.length / 10) - 1,
-            activeCards: activeCards(allCards),
-            action: "remCards"
-        });
+        setTotalClick(totalClick+1);
     }
 
-    const clickCard = (item, index) => (e) => {
+    const clickCard = (item, index) => () => {
         /* control the active variable, if active is true it means this is second click so need to check replacing
         but if false this means need to highlight or reject request */
         if (!active) {
@@ -273,22 +254,14 @@ const Game = () => {
             if(secondClick(item, highlighted, allCards, index)){
                 setCanUndo(true)
                 new Audio(flickAudio).play()
-                setTotalClick(totalClick + 1)
+                setTotalClick(totalClick + 1);
+            setTotalClick(totalClick-51); //bonus for successful click
             }
-
-            // reset variables for new processes, check if any completed decks
+            setTotalClick(totalClick+1);
             setActive(false)
             setHighlighted({})
             CompleteControl()
             setUndoDistribute(false)
-            setGameState({
-            time: time,
-            totalClick: totalClick,
-            completedDecks: complete,
-            remSets: (remCards.length / 10) - 1,
-            activeCards: activeCards(allCards),
-            action: "clickCard"
-        });
         }
     }
 
@@ -350,17 +323,33 @@ const activeCards = (allCards) => {
 
 const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick) => {
     try {
-    // let [value, deck, from, to] = action;
-    let [deck, valueFrom, from, valueTo, to] = action;
+        let [valueFrom, deckFrom, from, valueTo, to] = action; ///Action space represents value(1-13), deck (1-8), rowFrom (0-10), value (1-13), rowTo (1-10)
 
-    let moveFrom = findLink(allCards, deck, `${valueFrom}`);
-    const firstClick = clickCard(moveFrom, from);
-    firstClick();
+        let moveFrom = findLink(allCards, deckFrom, `${valueFrom}`);
+        let moveFromIndex = findIndex(allCards, deckFrom, `${valueFrom}`);
 
-    setTriggerSecondClick({trigger: true, to: to});
+        let active_cards = activeCards(allCards);
+        let deckTo = active_cards[to][active_cards[to].length - 1]['deck'];
+        let moveTo = findLink(allCards, deckTo, `${valueTo}`);
+        let moveToIndex = findIndex(allCards, deckTo, `${valueTo}`);
+
+
+        if (moveFrom === undefined || moveTo === undefined ||
+            !moveFrom.val['show'] || !moveTo.val['show']) {
+            return;
+        }
+
+        if (from !== moveFromIndex || to !== moveToIndex) {
+            return;
+        }
+
+        const firstClick = clickCard(moveFrom, from);
+        firstClick();
+
+        setTriggerSecondClick({ trigger: true, to: to });
     }
     catch (e) {
-        console.log("Card is incorrect", e)
+        console.log("ERROR Could not find card", e);
     }
 }
 
@@ -369,7 +358,6 @@ const fakeClickUndo = (clickUndo) => {
 }
 
 const fakeClickRemCards = (clickRemCards) => {
-    console.log('click rem cards')
     clickRemCards();
 }
 
@@ -377,21 +365,49 @@ const fakeClickRestart = () => {
     window.location.reload();
 }
 
-export const findLink = (allCards, deck, value) => {
-    for (let index = 0; index < allCards.length; index++) {
-        let element = allCards[index];
+const findLink = (allCards, deck, value) => {
+    try {
+        for (let index = 0; index < allCards.length; index++) {
+            let element = allCards[index];
 
-        if (element === null) {
-            continue
-        }
+            if (element === null) {
+                continue
+            }
 
-        while (element.next!==null) {
-            if (element.next.val['deck'] === deck && element.next.val['value'] === value)
-                 return element.next
-            element = element.next
+            while (element.next!==null) {
+                if (element.next.val['deck'] === deck && element.next.val['value'] === value)
+                     return element.next
+                element = element.next
+            }
         }
+    }
+    catch (e) {
+        console.log('Error while trying to find link:', e);
+        return null;
     }
 }
 
+const findIndex = (allCards, deck, value) => {
+    try {
+
+        for (let index = 0; index < allCards.length; index++) {
+            let element = allCards[index];
+
+            if (element === null) {
+                continue
+            }
+
+            while (element.next!==null) {
+                if (element.next.val['deck'] === deck && element.next.val['value'] === value)
+                     return index
+                element = element.next
+            }
+        }
+    }
+    catch (e) {
+        console.log('Error while trying to find link:', e);
+        return -1;
+    }
+}
 
 export default Game

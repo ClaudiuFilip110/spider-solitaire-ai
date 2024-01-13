@@ -9,13 +9,14 @@ import nest_asyncio
 import numpy as np
 from gymnasium import spaces
 from gymnasium.core import ObsType, ActType, Env
-from gymnasium.spaces import MultiDiscrete, Box
+from gymnasium.spaces import MultiDiscrete
 
 nest_asyncio.apply()
 
 
 def calculate_reward(new_state):
     # TODO: Correctly calculate reward
+    # TODO: terminated daca completed == 8
     reward = 0
     done = False
     terminated = False
@@ -49,34 +50,32 @@ class SpiderEnv(Env):
             'activeCardLengths': spaces.MultiDiscrete([max_elems_per_row] * num_card_rows),
         })
 
-        # TODO:  UserWarning: WARN: For Box action spaces, we recommend using a symmetric and normalized space (range=[-1, 1] or [0, 1]). See https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html for more information.
-        # TODO: nu ai adaugat valori in action space pentru undo si remCards
-        self.action_space = MultiDiscrete([num_cards, num_decks, num_card_rows, num_card_rows, num_card_rows])
-        """Action space represents value(1-13), deck (1-8), moveFrom (1-10), moveTo (1-10) 
-        ex: [3,3,0,2,5] -> move ((card 3 identified by deck 3 (it's unique)) from row 0)) to (el 2, row 5)"""
+        self.action_space = MultiDiscrete([num_cards + 2, num_decks, num_card_rows, num_cards, num_card_rows])
+        """Action space represents value(1-13), deck (1-8), rowFrom (0-10), value (1-13), rowTo (1-10) 
+        ex: [3,3,0,2,5] -> move ((card 3 identified by deck 3 (it's unique)) from row 0)) to (el 2, row 5)
+        THE +2 is for the 2 extra actions: undo and reset. For both, the other values are irrelevant"""
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        asyncio.run(self.websocket.send(f"'action': {action}"))
+        action = {'action': action.tolist()}
+        data = json.dumps(action)
+
+        asyncio.run(self.websocket.send(data))
 
         message = asyncio.run(self.websocket.recv())
         new_state = self.process_message(message)
-
         reward, done, terminated, info = calculate_reward(new_state)
-
         return new_state, reward, terminated, done, info
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[
         ObsType, dict[str, Any]]:
         super().reset(seed=seed)
-        """Am facut o mica smecherie. Trimit mesajul de restart si doar apasul butonul de restart,
-        iar in websocket.onConnect am pus `setGameState`."""
-        # TODO: pot scoate "mesajul" si sa extrag din actiune direct. Ex: daca trimit 0,0,0,0,0 -> restart
 
-        asyncio.run(self.websocket.send(f"'action': 'restart'"))
+        action = {'action': [0] * 5}
+        data = json.dumps(action)
+        asyncio.run(self.websocket.send(data))
 
         message = asyncio.run(self.websocket.recv())
         new_state = self.process_message(message)
-
         return new_state, {}
 
     def process_message(self, message):
