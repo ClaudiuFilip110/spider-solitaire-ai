@@ -27,7 +27,6 @@ class SpiderEnv(Env):
         num_sets = 6  # max number of sets
 
         self.observation_space = spaces.Dict({
-            'totalClick': spaces.Discrete(max_steps),
             'completedDecks': spaces.Discrete(num_decks),
             'remSets': spaces.Discrete(num_sets),
             'activeCards': spaces.Box(low=0, high=max_elems_per_row, shape=(num_card_rows, max_elems_per_row),
@@ -76,7 +75,6 @@ class SpiderEnv(Env):
                 active_cards[i][j] = int(card)
 
         new_obs = {
-            'totalClick': int(message['totalClick']),
             'completedDecks': int(message['completedDecks']),
             'remSets': int(message['remSets']),
             'activeCards': active_cards,
@@ -89,20 +87,6 @@ class SpiderEnv(Env):
         done = False
         terminated = False
         info = {}
-
-        # reward -= 1  # for every timestep
-
-        reward += new_state['totalClick']
-
-        # reward -= new_state['remSets']
-
-        if multiplier := abs(np.count_nonzero(new_state['activeCards']) -
-                             np.count_nonzero(self.observation_space['activeCards'])) != 0:
-            reward += 50 * multiplier
-
-        if int(new_state['completedDecks']) == 8:
-            reward += 1000
-            done = True
 
         if self.curr_steps == self.max_steps:
             reward -= 100

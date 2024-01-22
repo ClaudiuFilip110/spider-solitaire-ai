@@ -44,7 +44,6 @@ const Game = () => {
     const [foundHints, setFoundHints] = useState(getCompleteHint(allCards));
     const [gameState,
         setGameState] = useState({
-        totalClick: totalClick,
         completedDecks: complete,
         remSets: remCards.length / 10,
         activeCards: activeCardsOnly(allCards)
@@ -56,18 +55,16 @@ const Game = () => {
         if (shouldSendBack) {
             sendGameState(gameState, socket);
             setShouldSendBack(false);
-            setTotalClick(0);
         }
     }, [shouldSendBack, gameState, socket]);
 
     useEffect(() => {
         setGameState({
-            totalClick: totalClick,
             completedDecks: complete,
             remSets: remCards.length / 10,
             activeCards: activeCardsOnly(allCards)
         });
-    }, [totalClick, complete, remCards, allCards]); // Dependencies
+    }, [complete, remCards, allCards]); // Dependencies
 
     useEffect(() => {
         let promise = getCompleteHint(allCards)
@@ -84,12 +81,6 @@ const Game = () => {
 
         newSocket.onopen = () => {
             console.log('WebSocket connected');
-            // setGameState({
-            //     totalClick: totalClick,
-            //     completedDecks: complete,
-            //     remSets: (remCards.length / 10),
-            //     activeCards: activeCardsOnly(allCards)
-            // });
         };
 
         newSocket.onmessage = (event) => {
@@ -99,7 +90,7 @@ const Game = () => {
                 let message = JSON.parse(data);
                 action = message['action'];
                 if (action.reduce(add, 0) === 0) {
-                    fakeClickRestart(setAllCards, setRemCards, setTotalClick, setComplete)
+                    fakeClickRestart(setAllCards, setRemCards, setComplete)
                 }
 
                 action[0]++;
@@ -107,7 +98,7 @@ const Game = () => {
                 let masterAction = action[0]
 
                 if (masterAction <= 13) {
-                    fakeClickCard(clickCard, action, allCards, setTriggerSecondClick, setTotalClick);
+                    fakeClickCard(clickCard, action, allCards, setTriggerSecondClick);
                 } else if (masterAction === 14) {
                     fakeClickUndo(clickUndo);
                 } else if (masterAction === 15) {
@@ -189,7 +180,6 @@ const Game = () => {
                 setPrevCards(null)
             }
             setCanUndo(false)
-            setTotalClick(totalClick + 1);
         } else {
             // console.log("Please Click Rules for Undo Rules")
             active && removeHighlight(highlighted)
@@ -221,7 +211,6 @@ const Game = () => {
                     setCanUndo(true)
                     setUndoDistribute(true)
                     CompleteControl()
-                    setTotalClick(totalClick - 10);
                 } else {
                     console.log("You must fill all columns for deal new cards")
                 }
@@ -259,10 +248,7 @@ const Game = () => {
             if (secondClick(item, highlighted, allCards, index)) {
                 console.log(`MOVED ${item} to row ${index}`)
                 setCanUndo(true)
-                // new Audio(flickAudio).play()
-                setTotalClick(totalClick + 490); // bonus for finding two matching cards
             }
-            setTotalClick(totalClick + 10); // bonus for finding a possible action
             setActive(false)
             setHighlighted({})
             CompleteControl()

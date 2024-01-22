@@ -10,7 +10,7 @@ export const sendGameState = (gameState, socket) => {
 }
 
 
-export const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick, setTotalClick) => {
+export const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick) => {
     try {
         let [valueFrom, deckFrom, from, valueTo, deckTo, to] = action; ///Action space represents value(1-13), deck (1-8), rowFrom (0-10), value (1-13), deck (1-8), rowTo (1-10)
 
@@ -23,13 +23,11 @@ export const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick
         // daca NU am gasit carti SAU cartile pe care le-am gasit sunt intoarse
         if (cardFrom === undefined || cardTo === undefined ||
             !cardFrom.val['show'] || !cardTo.val['show']) {
-            setTotalClick((val) => val + 5)
             return;
         }
 
         // daca cartile pe care le-am gasit nu sunt pe coloana specificata de actiune
         if (from !== cardFromIndex || to !== cardToIndex) {
-            setTotalClick((val) => val + 5)
             return;
         }
 
@@ -42,7 +40,6 @@ export const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick
 
         // verificam daca cardTo exista in randul corect, DAR nu e ultima carte
         if (cardTo.val !== lastItemCard.val || cardTo.next !== lastItemCard.next) {
-            setTotalClick((val) => val + 5)
             return;
         }
 
@@ -51,7 +48,6 @@ export const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick
         fakeFirstClick();
 
         setTriggerSecondClick({ trigger: true, moveTo: lastItemCard });
-        // fakeSecondClick(to, cardTo, allCards, clickCard);
     }
     catch (e) {
         console.log("ERROR Could not find card", e);
@@ -66,13 +62,12 @@ export const fakeClickRemCards = (clickRemCards) => {
     clickRemCards();
 }
 
-export const fakeClickRestart = (setAllCards, setRemCards, setTotalClick, setComplete) => {
+export const fakeClickRestart = (setAllCards, setRemCards, setComplete) => {
     const {
         card_initial,
         card_rem
     } = CardGenerator()
     setAllCards(card_initial)
     setRemCards(card_rem)
-    setTotalClick(0)
     setComplete(0)
 }
