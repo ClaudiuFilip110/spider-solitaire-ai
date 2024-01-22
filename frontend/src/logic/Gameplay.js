@@ -340,15 +340,6 @@ export const getCompleteHint = async (allCards) => {
 
             // if eligible show cards for 2 seconds
             if (next_value === cur_value && +prev.val.value !== next_value) {
-                // highlight cards, wait, and remove highlight
-                await doHighlight(elementNode)
-                await doHighlight(element2Node)
-
-                await delay(2000)
-                
-                await removeHighlight(elementNode)
-                await removeHighlight(element2Node)
-
                 return true
             }
         }

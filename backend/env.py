@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import json
+import time
 from typing import Any, SupportsFloat
 
 import nest_asyncio
@@ -14,48 +15,32 @@ from gymnasium.spaces import MultiDiscrete
 nest_asyncio.apply()
 
 
-def calculate_reward(new_state):
-    # TODO: Correctly calculate reward
-    # TODO: terminated daca completed == 8
-    reward = 0
-    done = False
-    terminated = False
-    info = {}
-
-    reward += new_state['time']
-    reward += new_state['totalClick']
-    reward += new_state['completedDecks'] * 50
-
-    if len(new_state) == 8:
-        done = True
-    return reward, done, terminated, info
-
-
 class SpiderEnv(Env):
-    def __init__(self, socket):
+    def __init__(self, socket, max_steps):
         self.websocket = socket
-
-        max_elems_per_row = 25  # Define a maximum length for sublists in activeCards
+        self.max_steps = max_steps
+        self.curr_steps = 0
+        max_elems_per_row = 15  # Define a maximum length for sublists in activeCards
         num_card_rows = 10  # Number of sublists
         num_cards = 13  # number of cards
         num_decks = 8  # number of decks
-        max_val = 5000  # max time
-        num_sets = 5  # max number of sets
+        num_sets = 6  # max number of sets
+
         self.observation_space = spaces.Dict({
-            'time': spaces.Discrete(max_val),
-            'totalClick': spaces.Discrete(max_val),
+            'totalClick': spaces.Discrete(max_steps),
             'completedDecks': spaces.Discrete(num_decks),
             'remSets': spaces.Discrete(num_sets),
-            'activeCards': spaces.Box(low=0, high=num_cards, shape=(num_card_rows, max_elems_per_row), dtype=np.int32),
-            'activeCardLengths': spaces.MultiDiscrete([max_elems_per_row] * num_card_rows),
+            'activeCards': spaces.Box(low=0, high=max_elems_per_row, shape=(num_card_rows, max_elems_per_row),
+                                      dtype=np.int32),
         })
-
-        self.action_space = MultiDiscrete([num_cards + 2, num_decks, num_card_rows, num_cards, num_card_rows])
-        """Action space represents value(1-13), deck (1-8), rowFrom (0-10), value (1-13), rowTo (1-10) 
-        ex: [3,3,0,2,5] -> move ((card 3 identified by deck 3 (it's unique)) from row 0)) to (el 2, row 5)
+        self.action_space = MultiDiscrete(
+            [num_cards + 2, num_decks, num_card_rows, num_cards, num_decks, num_card_rows])
+        """Action space represents value(1-15), deck (0-7), rowFrom (0-9), value (1-15), deck (0-7), rowTo (0-9) 
+        ex: [3,3,0,2,2,5] -> move ((card 3, deck 3) from row 0)) to ((el 2, deck 2), row 5)
         THE +2 is for the 2 extra actions: undo and reset. For both, the other values are irrelevant"""
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        self.curr_steps += 1
         action = {'action': action.tolist()}
         data = json.dumps(action)
 
@@ -63,14 +48,15 @@ class SpiderEnv(Env):
 
         message = asyncio.run(self.websocket.recv())
         new_state = self.process_message(message)
-        reward, done, terminated, info = calculate_reward(new_state)
+        reward, done, terminated, info = self.calculate_reward(new_state)
+
         return new_state, reward, terminated, done, info
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[
         ObsType, dict[str, Any]]:
         super().reset(seed=seed)
 
-        action = {'action': [0] * 5}
+        action = {'action': [0] * 6}
         data = json.dumps(action)
         asyncio.run(self.websocket.send(data))
 
@@ -87,18 +73,42 @@ class SpiderEnv(Env):
 
         for i, row in enumerate(message['activeCards']):
             for j, card in enumerate(row):
-                active_cards[i][j] = int(card['value'])
+                active_cards[i][j] = int(card)
 
         new_obs = {
-            'time': int(message['time']),
             'totalClick': int(message['totalClick']),
             'completedDecks': int(message['completedDecks']),
             'remSets': int(message['remSets']),
-            'activeCards': np.array(active_cards, dtype=np.int32),
-            'activeCardLengths': np.array([len(row) for row in message['activeCards']], dtype=np.int32)
+            'activeCards': active_cards,
         }
         observation = collections.OrderedDict(sorted(new_obs.items()))
         return observation
+
+    def calculate_reward(self, new_state):
+        reward = 0
+        done = False
+        terminated = False
+        info = {}
+
+        # reward -= 1  # for every timestep
+
+        reward += new_state['totalClick']
+
+        # reward -= new_state['remSets']
+
+        if multiplier := abs(np.count_nonzero(new_state['activeCards']) -
+                             np.count_nonzero(self.observation_space['activeCards'])) != 0:
+            reward += 50 * multiplier
+
+        if int(new_state['completedDecks']) == 8:
+            reward += 1000
+            done = True
+
+        if self.curr_steps == self.max_steps:
+            reward -= 100
+            self.curr_steps = 0
+            terminated = True
+        return reward, done, terminated, info
 
     def close(self):
         super().close()
