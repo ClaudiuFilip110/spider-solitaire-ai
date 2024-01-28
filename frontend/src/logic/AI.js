@@ -1,4 +1,4 @@
-import {findIndex, findLink} from "./linkedlist";
+import {cardsInPlay, findLink} from "./linkedlist";
 import CardGenerator from "./CardGenerator";
 
 export const sendGameState = (gameState, socket) => {
@@ -17,40 +17,26 @@ export const fakeClickCard = (clickCard, action, allCards, setTriggerSecondClick
         let cardFrom = findLink(allCards, deckFrom, `${valueFrom}`);
         let cardTo = findLink(allCards, deckTo, `${valueTo}`);
 
-        let cardFromIndex = findIndex(allCards, deckFrom, `${valueFrom}`);
-        let cardToIndex = findIndex(allCards, deckTo, `${valueTo}`);
+        // console.log('action from BE', action)
+        // console.log('allCards', allCards)
+        // console.log('cards in play', cardsInPlay(allCards))
+        // console.log(cardFrom);
+        // console.log(cardTo);
 
-        // daca NU am gasit carti SAU cartile pe care le-am gasit sunt intoarse
-        if (cardFrom === undefined || cardTo === undefined ||
-            !cardFrom.val['show'] || !cardTo.val['show']) {
-            return;
+
+        if (cardFrom !== undefined && cardTo !== undefined) {
+
+            console.log(`Clicking ${cardFrom.val['value']} on row ${from}; Clicking ${cardTo.val['value']} on row ${to}`)
+            if (+cardFrom.val['value'] === (+cardTo.val['value'] + 1)) {
+                console.log('VALID CLICK')
+                const fakeFirstClick = clickCard(cardFrom, from);
+                fakeFirstClick();
+
+                setTriggerSecondClick({trigger: true, moveTo: cardTo, to: to});
+            }
         }
-
-        // daca cartile pe care le-am gasit nu sunt pe coloana specificata de actiune
-        if (from !== cardFromIndex || to !== cardToIndex) {
-            return;
-        }
-
-        let active_cards = activeCards(allCards);
-
-        let lastItemDeck = active_cards[to][active_cards[to].length - 1]['deck'];
-        let lastItemValue = active_cards[to][active_cards[to].length - 1]['value'];
-        let lastItemIndex =findIndex(allCards, lastItemDeck, lastItemValue);
-        let lastItemCard = findLink(allCards, lastItemDeck, lastItemValue);
-
-        // verificam daca cardTo exista in randul corect, DAR nu e ultima carte
-        if (cardTo.val !== lastItemCard.val || cardTo.next !== lastItemCard.next) {
-            return;
-        }
-
-        console.log(`Card ${cardFrom['val']['value']} at row ${cardFromIndex+1} -> ${cardTo['val']['value']} at row ${lastItemIndex+1}`)
-        const fakeFirstClick = clickCard(cardFrom, from);
-        fakeFirstClick();
-
-        setTriggerSecondClick({ trigger: true, moveTo: lastItemCard });
-    }
-    catch (e) {
-        console.log("ERROR Could not find card", e);
+    } catch (e) {
+        console.log("ERROR?", e)
     }
 }
 
@@ -67,7 +53,8 @@ export const fakeClickRestart = (setAllCards, setRemCards, setComplete) => {
         card_initial,
         card_rem
     } = CardGenerator()
-    setAllCards(card_initial)
-    setRemCards(card_rem)
-    setComplete(0)
+    console.log(card_initial)
+    // setAllCards([card_initial])
+    // setRemCards(...card_rem)
+    // setComplete(0)
 }

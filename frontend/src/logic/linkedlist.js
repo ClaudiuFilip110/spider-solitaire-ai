@@ -1,4 +1,3 @@
-
 export class Link {
     constructor(val) {
         this.val = val;
@@ -7,10 +6,10 @@ export class Link {
 }
 
 // building linked list structure, cards will have next and val keys val contains card property, next have next card's property
-function createLink(item){
+function createLink(item) {
     let node, temp;
     for (let index = item.length - 1; index >= 0; index--) {
-        if(!node)
+        if (!node)
             node = new Link(item[index]);
         else {
             temp = new Link(item[index]);
@@ -23,14 +22,14 @@ function createLink(item){
 
 const LinkedList = (array) => {
 
-let linkedlist = []
+    let linkedlist = []
 
-for (let index = 0; index < array.length; index++) {
-    const element = array[index];
-    linkedlist = [...linkedlist, createLink(element)]
-}
+    for (let index = 0; index < array.length; index++) {
+        const element = array[index];
+        linkedlist = [...linkedlist, createLink(element)]
+    }
 
-return linkedlist
+    return linkedlist
 }
 
 export const findLink = (allCards, deck, value) => {
@@ -42,14 +41,13 @@ export const findLink = (allCards, deck, value) => {
                 continue
             }
 
-            while (element.next!==null) {
+            while (element.next !== null) {
                 if (element.next.val['deck'] === deck && element.next.val['value'] === value)
-                     return element.next
+                    return element.next
                 element = element.next
             }
         }
-    }
-    catch (e) {
+    } catch (e) {
         console.log('Error while trying to find link:', e);
         return null;
     }
@@ -65,34 +63,16 @@ export const findIndex = (allCards, deck, value) => {
                 continue
             }
 
-            while (element.next!==null) {
+            while (element.next !== null) {
                 if (element.next.val['deck'] === deck && element.next.val['value'] === value)
-                     return index
+                    return index
                 element = element.next
             }
         }
-    }
-    catch (e) {
+    } catch (e) {
         console.log('Error while trying to find link:', e);
         return -1;
     }
-}
-
-export const activeCardsOnly = (allCards) => {
-    let activeCards = [];
-    for (let index = 0; index < 10; index++) {
-        activeCards[index] = []
-    }
-
-    for (let index = 0; index < 10; index++) {
-        let element = allCards[index]
-        while (element.next !== null) {
-            element = element.next
-            if (element.val.show === true)
-                activeCards[index].push(+element.val['value'])
-        }
-    }
-    return activeCards;
 }
 
 export const activeCards = (allCards) => {
@@ -115,8 +95,32 @@ export const activeCards = (allCards) => {
     return activeCards;
 }
 
-export function add(accumulator, a) {
-  return accumulator + a;
+export const cardsInPlay = (allCards) => {
+    let activeCards = [];
+    for (let index = 0; index < 10; index++) {
+        activeCards[index] = []
+    }
+
+    if (allCards !== null)
+
+        for (let index = 0; index < 10; index++) {
+            let element = allCards[index]
+            while (element.next !== null) {
+                activeCards[index].push({
+                    'value': element.val['value'],
+                    'deck': element.val['deck'],
+                    'show': element.val['show'],
+                })
+                element = element.next
+            }
+            if (element.val !== null)
+                activeCards[index].push({
+                    'value': element.val['value'],
+                    'deck': element.val['deck'],
+                    'show': element.val['show'],
+                })
+        }
+    return activeCards;
 }
 
 export default LinkedList

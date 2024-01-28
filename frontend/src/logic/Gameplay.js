@@ -1,5 +1,5 @@
 import '../assets/css/card.css'
-import { card } from './CardGenerator'
+import {card} from './CardGenerator'
 import applauseAudio from '../assets/sound/applause.mp3'
 import wrongAudio from '../assets/sound/wrong.mp3'
 
@@ -47,7 +47,7 @@ export const setCardDisplay = (allCards) => {
                 element = element.next
             }
             element.val.show = true;
-        }   
+        }
     }
 }
 
@@ -67,23 +67,23 @@ export const anyBlank = (allCards) => {
 export const clickGetCards = (request, allCards, remCards) => {
 
     // check request bcs only 5 * 10 cards will distribute
-        request += 1
-        // add new cards to placing cards
-        for (let index = 0; index < allCards.length; index++) {
-            let element = allCards[index];
-            if (element === null) { // placing to empty columns
-                element = createLinked(remCards.shift())
-                allCards[index] = element
-            } else {
-                while (element.next !== null) {
-                    element = element.next
-                }
-                element.next = createLinked(remCards.shift())
+    request += 1
+    // add new cards to placing cards
+    for (let index = 0; index < allCards.length; index++) {
+        let element = allCards[index];
+        if (element === null) { // placing to empty columns
+            element = createLinked(remCards.shift())
+            allCards[index] = element
+        } else {
+            while (element.next !== null) {
+                element = element.next
             }
+            element.next = createLinked(remCards.shift())
         }
-        setCardDisplay(allCards)
-        return {request, remCards}
-    
+    }
+    setCardDisplay(allCards)
+    return {request, remCards}
+
 }
 
 export const checkComplete = (allCards, complete, test) => {
@@ -100,7 +100,7 @@ export const checkComplete = (allCards, complete, test) => {
                         var node = element // hold head node bcs if sorting complete, we will need to remove from that index
                     }
                     rank += 1
-                    if (rank === 13) {                        
+                    if (rank === 13) {
                         test && new Audio(applauseAudio).play()
                         complete += 1
                         removeCardOldPlace(node, allCards)
@@ -138,9 +138,9 @@ export const firstClick = (item) => {
         for (let index = 0; index <= iter; index++) {
             head.val.active = true
             head = head.next
-        } 
+        }
         return node
-    }   
+    }
 }
 
 export const secondClick = (item, highlighted, allCards, index) => {
@@ -155,14 +155,13 @@ export const secondClick = (item, highlighted, allCards, index) => {
         // add selected card to clicked card's next
         item.next = highlighted
         undoControl = true
-        
+
     } else {
         // if not correct feedback to user and remove highlight
-        if(item === null) {
+        if (item === null) {
             // alert("Only A can be placed to blank columns")
-        } 
-        else {
-            if(item !== highlighted){
+        } else {
+            if (item !== highlighted) {
                 new Audio(wrongAudio).play()
                 // alert("Incorrect Placement")
             }
@@ -181,9 +180,9 @@ export const getPrev = (allCards, find) => {
             continue
         }
 
-        while (element.next!==null) {
+        while (element.next !== null) {
             if (element.next === find) {
-                 return element.val.show
+                return element.val.show
             }
             element = element.next
         }
@@ -199,7 +198,7 @@ export const undoPlacement = (allCards, prevCards) => {
             if (element === null) {
                 // if blank place directly
                 allCards[index] = prevCards.newHead
-            } else{
+            } else {
                 // if not, need to place to last element
                 while (element.next !== null) {
                     element = element.next
@@ -240,10 +239,10 @@ export const undoDistribution = (allCards) => {
     for (let index = 0; index < allCards.length; index++) {
         let element = allCards[index];
 
-        while (element.next!==null) {
+        while (element.next !== null) {
             element = element.next
         }
-        
+
         // push cards into array
         prevRemCards.push(new card(element.val.deck, element.val.value, false, false))
         removeCardOldPlace(element, allCards) // remove last cards from board
@@ -262,7 +261,7 @@ export const hintControl = (item, control) => {
             let cur_value = +item.val.value;
             // check cards if in correct order
             if (next_value !== cur_value) {
-                    return false
+                return false
             }
 
             item = item.next
@@ -284,65 +283,68 @@ export const doHighlight = async (element) => {
 }
 
 export const getCompleteHint = async (allCards) => {
+    if (allCards !== null) {
 
-    const delay = ms => new Promise(res => setTimeout(res, ms));
+        const delay = ms => new Promise(res => setTimeout(res, ms));
 
-    for (let index = 0; index < allCards.length; index++) {
-        let element = allCards[index];
-        let elementNode
-        let flag = true
-
-        if (element === null) {
-            continue
-        }
-        // pass undisplayed cards
-        while (element.val.show === false) {
-            element = element.next
-        }
-        
-        while (element !== null && flag) {
-            if (hintControl(element, true)) {
-                elementNode = hintControl(element, true)
-                flag = false // if element found stop loop 
-            } else {
-                element = element.next
-            }
-        }
-
-        for (let index2 = 0; index2 < allCards.length; index2++) {
-            let element2 = allCards[index2]
-            let element2Node
+        for (let index = 0; index < allCards.length; index++) {
+            let element = allCards[index];
+            let elementNode
             let flag = true
-            let prev = element2
 
-            if (element2 === null) {
+            if (element === null) {
                 continue
             }
             // pass undisplayed cards
-            while (element2.val.show === false) {
-                element2 = element2.next
-                prev = element2
+            while (element.val.show === false) {
+                element = element.next
             }
 
-            while (element2 !== null && flag) {
-                if (hintControl(element2, false)) {
-                    element2Node = hintControl(element2, false)
+            while (element !== null && flag) {
+                if (hintControl(element, true)) {
+                    elementNode = hintControl(element, true)
                     flag = false // if element found stop loop
                 } else {
-                    prev = element2
-                    element2 = element2.next
+                    element = element.next
                 }
             }
 
-            // check for eligibility
-            let next_value = +element2Node.val.value - 1;
-            let cur_value = +elementNode.val.value;
+            for (let index2 = 0; index2 < allCards.length; index2++) {
+                let element2 = allCards[index2]
+                let element2Node
+                let flag = true
+                let prev = element2
 
-            // if eligible show cards for 2 seconds
-            if (next_value === cur_value && +prev.val.value !== next_value) {
-                return true
+                if (element2 === null) {
+                    continue
+                }
+                // pass undisplayed cards
+                while (element2.val.show === false) {
+                    element2 = element2.next
+                    prev = element2
+                }
+
+                while (element2 !== null && flag) {
+                    if (hintControl(element2, false)) {
+                        element2Node = hintControl(element2, false)
+                        flag = false // if element found stop loop
+                    } else {
+                        prev = element2
+                        element2 = element2.next
+                    }
+                }
+
+                // check for eligibility
+                let next_value = +element2Node.val.value - 1;
+                let cur_value = +elementNode.val.value;
+
+                // if eligible show cards for 2 seconds
+                if (next_value === cur_value && +prev.val.value !== next_value) {
+                    return true
+                }
             }
         }
+
     }
     return false
 }

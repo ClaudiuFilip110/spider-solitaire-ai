@@ -34,7 +34,7 @@ const CardHolder = ({clickRemCards, remCards, complete}) => {
     return (
         <div className={"top" + (width < 640 ? " d-grid-row" : "")} >
             <div className="cardholders">
-        {cardholders(clickRemCards, remCards.length/10, width, timestamp)}
+        {cardholders(clickRemCards, remCards ? remCards.length/10: 0, width, timestamp)}
         </div>
 
         <ul className = "blank-wrap" > 

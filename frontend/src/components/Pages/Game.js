@@ -20,20 +20,15 @@ import {cardsPush} from '../../logic/ComponentCreate'
 import CardHolder from '../CardHolder/CardHolder'
 import {Redirect} from 'react-router-dom'
 import {fakeClickCard, fakeClickRemCards, fakeClickRestart, fakeClickUndo, sendGameState} from "../../logic/AI";
-import {activeCardsOnly, add} from "../../logic/linkedlist";
+import {activeCards, cardsInPlay} from "../../logic/linkedlist";
 
 const Game = () => {
+    let [allCards, setAllCards] = useState(null) // contains all cards
+    let [remCards, setRemCards] = useState(null) // remaining cards
 
-    const {
-        card_initial,
-        card_rem
-    } = CardGenerator()
-
-    const [allCards, setAllCards] = useState(card_initial) // contains all cards
     const [highlighted, setHighlighted] = useState({}) // keeps highlighted card, set when every first click to card
     const [active, setActive] = useState(false) // active means we have highlighted card so if any click triggered need to control for placement
     const [request, setRequest] = useState(0) // request keeps how many deck of cards will come from remaining cards
-    const [remCards, setRemCards] = useState(card_rem) // remaining cards
     const [complete, setComplete] = useState(0) // complete keeps how many decks will completed
     const [prevCards, setPrevCards] = useState(null) // keep prev card for undo
     const [canUndo, setCanUndo] = useState(false) // undo control
@@ -45,11 +40,12 @@ const Game = () => {
     const [gameState,
         setGameState] = useState({
         completedDecks: complete,
-        remSets: remCards.length / 10,
-        activeCards: activeCardsOnly(allCards)
+        cardsInPlay: cardsInPlay(allCards)
     });
-    const [triggerSecondClick, setTriggerSecondClick] = useState({trigger: false, moveTo: null});
+    const [triggerSecondClick, setTriggerSecondClick] = useState({trigger: false, moveTo: null, to: null});
     const [shouldSendBack, setShouldSendBack] = useState(false);
+    const [receivedAction, setReceivedAction] = useState(null);
+
 
     useEffect(() => {
         if (shouldSendBack) {
@@ -61,17 +57,36 @@ const Game = () => {
     useEffect(() => {
         setGameState({
             completedDecks: complete,
-            remSets: remCards.length / 10,
-            activeCards: activeCardsOnly(allCards)
+            cardsInPlay: cardsInPlay(allCards)
         });
     }, [complete, remCards, allCards]); // Dependencies
 
     useEffect(() => {
-        let promise = getCompleteHint(allCards)
-        promise.then((check) => {
-            setFoundHints(check)
-        })
-    }, [allCards])
+        if (receivedAction && allCards) {
+            const action = receivedAction['action']
+            const clicks = receivedAction['clicks']
+            switch (action) {
+                case -1:
+                    break;
+                case 0:
+                    fakeClickCard(clickCard, clicks, allCards, setTriggerSecondClick);
+                    break;
+                case 1:
+                    console.log('clicking undo')
+                    fakeClickUndo(clickUndo);
+                    break;
+                case 2:
+                    console.log('clicking new deck')
+                    fakeClickRemCards(clickRemCards);
+                    break;
+                default:
+                    console.log("SWITCH ERROR: Something went horribly wrong!!!!!")
+            }
+            // Reset receivedAction after processing
+            setReceivedAction(null);
+            setShouldSendBack(true);
+        }
+    }, [receivedAction, allCards])
 
 
     useEffect(() => {
@@ -89,27 +104,20 @@ const Game = () => {
             try {
                 let message = JSON.parse(data);
                 action = message['action'];
-                if (action.reduce(add, 0) === 0) {
-                    fakeClickRestart(setAllCards, setRemCards, setComplete)
+                // console.log('ACTIVE CARDS', activeCards(allCards));
+                if (action === -1) {
+                    const {
+                        card_initial,
+                        card_rem
+                    } = CardGenerator()
+                    setAllCards(card_initial);
+                    setRemCards(card_rem);
+                    setComplete(0)
                 }
 
-                action[0]++;
-                action[3]++; // cards start from 0 in Python, but 1 in FE
-                let masterAction = action[0]
-
-                if (masterAction <= 13) {
-                    fakeClickCard(clickCard, action, allCards, setTriggerSecondClick);
-                } else if (masterAction === 14) {
-                    fakeClickUndo(clickUndo);
-                } else if (masterAction === 15) {
-                    fakeClickRemCards(clickRemCards);
-                } else {
-                    console.log("SWITCH ERROR: Something went horribly wrong!!!!!")
-                }
+                setReceivedAction(message);
             } catch (e) {
                 console.log('Error while getting data from Python: ', e)
-            } finally {
-                setShouldSendBack(true);
             }
         };
 
@@ -131,9 +139,11 @@ const Game = () => {
             if (triggerSecondClick.moveTo !== null) {
                 // Call the second click function
                 if (moveTo !== null) {
+                    // console.log(triggerSecondClick.moveTo)
+                    // console.log(`Trying to move item to row ${triggerSecondClick.to}`)
                     const secondClick = clickCard(triggerSecondClick.moveTo, triggerSecondClick.to);
                     secondClick();
-                    setTriggerSecondClick({trigger: false, moveTo: null});
+                    setTriggerSecondClick({trigger: false, moveTo: null, to: null});
                 } else {
                     console.log('moveTo is null')
                 }
@@ -188,35 +198,34 @@ const Game = () => {
     }
 
     const clickRemCards = () => {
-        if (!foundHints)
-            if (remCards.length > 0) {
-                if (anyBlank(allCards)) {
-                    // new Audio(shuffleAudio).play()
-                    // set new remaining cards, request is holding remaining card click count
-                    const {
-                        request: newRequest,
-                        remCards: newRemCards
-                    } = clickGetCards(request, allCards, remCards)
+        if (remCards.length > 0) {
+            if (anyBlank(allCards)) {
+                // new Audio(shuffleAudio).play()
+                // set new remaining cards, request is holding remaining card click count
+                const {
+                    request: newRequest,
+                    remCards: newRemCards
+                } = clickGetCards(request, allCards, remCards)
 
-                    // if any selected card remove highlight
-                    if (active) {
-                        setHighlighted({})
-                        removeHighlight(highlighted)
-                        setActive(false)
-                    }
-
-                    // set new variables
-                    setRequest(newRequest)
-                    setRemCards(newRemCards)
-                    setCanUndo(true)
-                    setUndoDistribute(true)
-                    CompleteControl()
-                } else {
-                    console.log("You must fill all columns for deal new cards")
+                // if any selected card remove highlight
+                if (active) {
+                    setHighlighted({})
+                    removeHighlight(highlighted)
+                    setActive(false)
                 }
+
+                // set new variables
+                setRequest(newRequest)
+                setRemCards(newRemCards)
+                setCanUndo(true)
+                setUndoDistribute(true)
+                CompleteControl()
             } else {
-                console.log('you clicked rem cards, but there are still possible actions.')
+                console.log("You must fill all columns for deal new cards")
             }
+        } else {
+            console.log('you clicked rem cards, but there are still possible actions.')
+        }
     }
 
     const clickCard = (item, index) => () => {
@@ -246,7 +255,6 @@ const Game = () => {
 
             // if placement success set undo control
             if (secondClick(item, highlighted, allCards, index)) {
-                console.log(`MOVED ${item} to row ${index}`)
                 setCanUndo(true)
             }
             setActive(false)
@@ -271,18 +279,21 @@ const Game = () => {
             <div>
                 <Navbar clickUndo={clickUndo} clickHint={clickHint} complete={complete} handleTime={handleTime}
                         sendGameState={sendGameState} gameState={gameState} socket={socket}
-                        card_initial={card_initial}/>
+                        card_initial={allCards}/>
 
                 <CardHolder clickRemCards={clickRemCards} remCards={remCards} complete={complete}/>
 
                 <div
                     className="cards">
-                    {allCards.map((card, index) => (
-                        <div className="cards-col">
-                            {cardsPush(card, index, clickCard)}
-                        </div>
-                    ))
-                    }
+                    {allCards ? (
+                        allCards.map((card, index) => (
+                            <div className="cards-col" key={index}>
+                                {cardsPush(card, index, clickCard)}
+                            </div>
+                        ))
+                    ) : (
+                        <div>Loading cards...</div> // Or any other placeholder you want to show
+                    )}
                 </div>
 
             </div> : <Redirect to={{
